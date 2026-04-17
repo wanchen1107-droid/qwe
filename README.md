@@ -3,38 +3,51 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>小恐龍進化挑戰 - 觸控優化版</title>
+    <title>小恐龍進化挑戰 - 點擊增強版</title>
     <style>
-        /* 禁止手機長按彈出選單與藍色選取框 */
-        * { -webkit-tap-highlight-color: transparent; user-select: none; }
-        
         body { margin: 0; padding: 0; display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #e0f7fa; font-family: 'Courier New', Courier, monospace; overflow: hidden; touch-action: manipulation; }
         
-        #game-container { position: relative; width: 800px; height: 250px; background-color: white; border-bottom: 2px solid #535353; overflow: hidden; border-radius: 8px; box-shadow: 0 10px 20px rgba(0,0,0,0.1); }
+        #game-container { 
+            position: relative; 
+            width: 800px; 
+            height: 250px; 
+            background-color: white; 
+            border-bottom: 2px solid #535353; 
+            overflow: hidden; 
+            border-radius: 8px; 
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1); 
+            cursor: pointer; /* 提示使用者這可以點擊 */
+            user-select: none; /* 防止點擊時選取到文字 */
+        }
         
-        /* 恐龍樣式 */
         #dino { 
-            position: absolute; bottom: 0; left: 50px; width: 50px; height: 50px; 
+            position: absolute; 
+            bottom: 0; 
+            left: 50px; 
+            width: 50px; 
+            height: 50px; 
             background-image: url('image_67211c.png'); 
-            background-size: contain; background-repeat: no-repeat; z-index: 10; transition: filter 0.3s; 
+            background-size: contain;
+            background-repeat: no-repeat;
+            z-index: 10; 
+            transition: filter 0.3s; 
         }
         
         #dino.evo-gold { filter: sepia(1) saturate(5) hue-rotate(10deg) drop-shadow(0 0 5px #FFD700); }
         #dino.evo-flame { filter: saturate(2) hue-rotate(-10deg) drop-shadow(0 0 8px #ff4757); animation: flamePulse 0.5s infinite alternate; }
         @keyframes flamePulse { from { transform: scale(1); } to { transform: scale(1.08); } }
 
-        /* 特效與障礙物 */
-        .flame-particle { position: absolute; width: 6px; height: 6px; background: #ffa502; border-radius: 50%; z-index: 9; animation: flameFly 0.6s linear forwards; }
+        .flame-particle { position: absolute; width: 6px; height: 6px; background: #ffa502; border-radius: 50%; z-index: 9; animation: flameFly 0.6s linear forwards; pointer-events: none; }
         @keyframes flameFly { 0% { opacity: 1; transform: translate(0,0); } 100% { opacity: 0; transform: translate(-30px, -20px); } }
+
         .obstacle { position: absolute; bottom: 0; z-index: 5; background-color: #535353; border-radius: 4px; }
         .bird { bottom: 65px; border-radius: 50% 50% 0 0; }
         .cloud { position: absolute; border-radius: 50px; z-index: 1; opacity: 0.8; animation: cloudDrift linear infinite; }
         @keyframes cloudDrift { from { left: 850px; } to { left: -150px; } }
 
-        /* UI */
-        #ui-layer { position: absolute; top: 10px; width: 100%; display: flex; justify-content: flex-end; padding: 0 20px; box-sizing: border-box; z-index: 15; color: #535353; font-weight: bold; font-size: 18px;}
-        #message { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; display: none; z-index: 20; background: rgba(255,255,255,0.95); padding: 30px; border-radius: 15px; border: 3px solid #535353; width: 250px; }
-        #evo-status { position: absolute; top: 10px; left: 20px; color: #535353; z-index: 15; font-weight: bold;}
+        #ui-layer { position: absolute; top: 10px; width: 100%; display: flex; justify-content: flex-end; padding: 0 20px; box-sizing: border-box; z-index: 15; color: #535353; font-weight: bold; font-size: 18px; pointer-events: none; }
+        #message { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; display: none; z-index: 20; background: rgba(255,255,255,0.95); padding: 30px; border-radius: 15px; border: 3px solid #535353; pointer-events: none; }
+        #evo-status { position: absolute; top: 10px; left: 20px; color: #535353; z-index: 15; font-weight: bold; pointer-events: none;}
     </style>
 </head>
 <body>
@@ -45,8 +58,8 @@
         <div id="dino"></div>
         <div id="message">
             <h1 style="color: #ff4757; margin: 0;">GAME OVER</h1>
-            <p id="final-score" style="font-size: 18px; font-weight: bold; margin: 10px 0;"></p>
-            <p style="font-size: 14px; color: #666;">點擊螢幕 或 按空白鍵<br>重新開始</p>
+            <p id="final-score" style="font-size: 20px; font-weight: bold;"></p>
+            <p>點擊畫面 或 按下 [空白鍵] 重新挑戰</p>
         </div>
     </div>
 
@@ -72,25 +85,26 @@
 
     const cloudColors = ['#ffffff', '#ffedff', '#e3f2fd', '#e8f5e9', '#fff3e0'];
 
-    // --- 核心操作邏輯：支援鍵盤與觸控 ---
+    // --- 操作邏輯：合併 鍵盤 與 點擊 事件 ---
     function handleAction(e) {
-        if (e) e.preventDefault(); // 防止手機雙擊縮放
+        if (e) e.preventDefault(); // 防止手機點擊時的預設行為（如縮放）
 
         if (!isGameRunning) {
-            resetGame(); // 死亡時：重新開始
+            resetGame();
         } else if (!dino.isJumping) {
-            dino.vy = -15; // 遊戲中：跳躍
+            dino.vy = -15; 
             dino.isJumping = true; 
         }
     }
 
-    // 監聽鍵盤 (空白鍵 & 上箭頭)
+    // 監聽鍵盤
     document.addEventListener('keydown', (e) => {
         if (e.code === 'Space' || e.code === 'ArrowUp') handleAction();
     });
 
-    // 監聽手機觸控
-    document.addEventListener('touchstart', handleAction, { passive: false });
+    // 監聽點擊與觸控 (直接對遊戲容器監聽)
+    container.addEventListener('mousedown', handleAction);
+    container.addEventListener('touchstart', handleAction, {passive: false});
 
     function gameLoop() {
         if (!isGameRunning) return;
@@ -103,8 +117,8 @@
         
         score += 0.15;
         gameSpeed = 6 + (score / 200); 
-        scoreElement.innerText = 'SCORE: ' + Math.floor(score).toString().padStart(5, '0');
         
+        scoreElement.innerText = 'SCORE: ' + Math.floor(score).toString().padStart(5, '0');
         requestAnimationFrame(gameLoop);
     }
 
