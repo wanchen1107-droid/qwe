@@ -3,51 +3,38 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>小恐龍進化挑戰 - 點擊版</title>
+    <title>小恐龍進化挑戰 - 觸控優化版</title>
     <style>
-        /* 禁止手機長選取與預設行為 */
+        /* 禁止手機長按彈出選單與藍色選取框 */
         * { -webkit-tap-highlight-color: transparent; user-select: none; }
         
         body { margin: 0; padding: 0; display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #e0f7fa; font-family: 'Courier New', Courier, monospace; overflow: hidden; touch-action: manipulation; }
         
-        #game-container { position: relative; width: 800px; height: 250px; background-color: white; border-bottom: 2px solid #535353; overflow: hidden; border-radius: 8px; box-shadow: 0 10px 20px rgba(0,0,0,0.1); cursor: pointer; }
+        #game-container { position: relative; width: 800px; height: 250px; background-color: white; border-bottom: 2px solid #535353; overflow: hidden; border-radius: 8px; box-shadow: 0 10px 20px rgba(0,0,0,0.1); }
         
+        /* 恐龍樣式 */
         #dino { 
-            position: absolute; 
-            bottom: 0; 
-            left: 50px; 
-            width: 50px; 
-            height: 50px; 
+            position: absolute; bottom: 0; left: 50px; width: 50px; height: 50px; 
             background-image: url('image_67211c.png'); 
-            background-size: contain;
-            background-repeat: no-repeat;
-            z-index: 10; 
-            transition: filter 0.3s; 
+            background-size: contain; background-repeat: no-repeat; z-index: 10; transition: filter 0.3s; 
         }
         
-        /* 進化視覺效果 */
         #dino.evo-gold { filter: sepia(1) saturate(5) hue-rotate(10deg) drop-shadow(0 0 5px #FFD700); }
         #dino.evo-flame { filter: saturate(2) hue-rotate(-10deg) drop-shadow(0 0 8px #ff4757); animation: flamePulse 0.5s infinite alternate; }
         @keyframes flamePulse { from { transform: scale(1); } to { transform: scale(1.08); } }
 
-        .flame-particle { position: absolute; width: 6px; height: 6px; background: #ffa502; border-radius: 50%; z-index: 9; animation: flameFly 0.6s linear forwards; pointer-events: none; }
+        /* 特效與障礙物 */
+        .flame-particle { position: absolute; width: 6px; height: 6px; background: #ffa502; border-radius: 50%; z-index: 9; animation: flameFly 0.6s linear forwards; }
         @keyframes flameFly { 0% { opacity: 1; transform: translate(0,0); } 100% { opacity: 0; transform: translate(-30px, -20px); } }
-
         .obstacle { position: absolute; bottom: 0; z-index: 5; background-color: #535353; border-radius: 4px; }
         .bird { bottom: 65px; border-radius: 50% 50% 0 0; }
         .cloud { position: absolute; border-radius: 50px; z-index: 1; opacity: 0.8; animation: cloudDrift linear infinite; }
         @keyframes cloudDrift { from { left: 850px; } to { left: -150px; } }
 
-        #ui-layer { position: absolute; top: 10px; width: 100%; display: flex; justify-content: flex-end; padding: 0 20px; box-sizing: border-box; z-index: 15; color: #535353; font-weight: bold; font-size: 18px; pointer-events: none; }
-        #evo-status { position: absolute; top: 10px; left: 20px; color: #535353; z-index: 15; font-weight: bold; pointer-events: none; }
-        
-        #message { 
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); 
-            text-align: center; display: none; z-index: 20; 
-            background: rgba(255,255,255,0.95); padding: 30px; 
-            border-radius: 15px; border: 3px solid #535353;
-            pointer-events: none; /* 讓點擊穿透到容器 */
-        }
+        /* UI */
+        #ui-layer { position: absolute; top: 10px; width: 100%; display: flex; justify-content: flex-end; padding: 0 20px; box-sizing: border-box; z-index: 15; color: #535353; font-weight: bold; font-size: 18px;}
+        #message { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; display: none; z-index: 20; background: rgba(255,255,255,0.95); padding: 30px; border-radius: 15px; border: 3px solid #535353; width: 250px; }
+        #evo-status { position: absolute; top: 10px; left: 20px; color: #535353; z-index: 15; font-weight: bold;}
     </style>
 </head>
 <body>
@@ -58,8 +45,8 @@
         <div id="dino"></div>
         <div id="message">
             <h1 style="color: #ff4757; margin: 0;">GAME OVER</h1>
-            <p id="final-score" style="font-size: 20px; font-weight: bold;"></p>
-            <p>點擊畫面 或 按空白鍵 重新開始</p>
+            <p id="final-score" style="font-size: 18px; font-weight: bold; margin: 10px 0;"></p>
+            <p style="font-size: 14px; color: #666;">點擊螢幕 或 按空白鍵<br>重新開始</p>
         </div>
     </div>
 
@@ -85,28 +72,25 @@
 
     const cloudColors = ['#ffffff', '#ffedff', '#e3f2fd', '#e8f5e9', '#fff3e0'];
 
-    // --- 核心控制邏輯 ---
+    // --- 核心操作邏輯：支援鍵盤與觸控 ---
     function handleAction(e) {
-        if (e) e.preventDefault(); // 防止預設觸發（如滾動）
+        if (e) e.preventDefault(); // 防止手機雙擊縮放
 
         if (!isGameRunning) {
-            resetGame();
+            resetGame(); // 死亡時：重新開始
         } else if (!dino.isJumping) {
-            dino.vy = -15; 
-            dino.isJumping = true;
+            dino.vy = -15; // 遊戲中：跳躍
+            dino.isJumping = true; 
         }
     }
 
-    // 監聽鍵盤
+    // 監聽鍵盤 (空白鍵 & 上箭頭)
     document.addEventListener('keydown', (e) => {
         if (e.code === 'Space' || e.code === 'ArrowUp') handleAction();
     });
 
-    // 監聽滑鼠點擊
-    container.addEventListener('mousedown', handleAction);
-
     // 監聽手機觸控
-    container.addEventListener('touchstart', handleAction, { passive: false });
+    document.addEventListener('touchstart', handleAction, { passive: false });
 
     function gameLoop() {
         if (!isGameRunning) return;
@@ -120,6 +104,7 @@
         score += 0.15;
         gameSpeed = 6 + (score / 200); 
         scoreElement.innerText = 'SCORE: ' + Math.floor(score).toString().padStart(5, '0');
+        
         requestAnimationFrame(gameLoop);
     }
 
@@ -207,7 +192,7 @@
     }
 
     function checkCollisions() {
-        let dRect = { left: dino.x + 12, right: dino.x + dino.width - 12, top: dino.y + dino.height - 8, bottom: dino.y };
+        let dRect = { left: dino.x + 10, right: dino.x + dino.width - 10, top: dino.y + dino.height - 5, bottom: dino.y };
         for (let o of obstacles) {
             let oRect = { left: o.x + 5, right: o.x + o.width - 5, top: o.y + o.height, bottom: o.y };
             if (dRect.right > oRect.left && dRect.left < oRect.right && dRect.top > oRect.bottom && dRect.bottom < oRect.top) {
